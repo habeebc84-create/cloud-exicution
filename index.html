@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CloudGuard AI | Threat Detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">◈</span><span>CLOUD<span>GUARD</span></span></div>
+        <div class="workspace"><span class="status-dot"></span><span>Production workspace</span><button aria-label="Switch workspace">⌄</button></div>
+        <nav aria-label="Main navigation">
+          <button class="nav-item active" data-view="overview"><span>▦</span>Overview</button>
+          <button class="nav-item" data-view="detection"><span>◎</span>Threat detection</button>
+          <button class="nav-item" data-view="alerts"><span>◇</span>Alerts <b id="alertBadge">3</b></button>
+          <button class="nav-item" data-view="reports"><span>▤</span>Reports</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="model-status"><span class="pulse"></span><div><strong>Model online</strong><small>Random Forest v2.4</small></div></div>
+          <button class="help">? &nbsp; Documentation</button>
+          <div class="profile"><div class="avatar">SI</div><div><strong>Sayyad Ibrahim</strong><small>Security analyst</small></div><button>•••</button></div>
+        </div>
+      </aside>
+
+      <main>
+        <header>
+          <div><p class="eyebrow">CLOUD SECURITY INTELLIGENCE</p><h1 id="pageTitle">Security overview</h1></div>
+          <div class="header-actions"><span class="timestamp" id="clock">—</span><button class="icon-button" aria-label="Notifications">♧<i></i></button><button class="scan-button" id="scanButton"><span>✦</span> Run scan</button></div>
+        </header>
+
+        <section class="view active" id="overview">
+          <section class="hero-card">
+            <div class="hero-copy"><p class="live-label"><span></span> LIVE MONITORING</p><h2>Protect your cloud.<br /><em>Stay ahead of threats.</em></h2><p>Machine-learning detection watches your cloud traffic, identifies anomalies, and gives your team the context to act fast.</p><button class="primary-action" data-go="detection">Open detection console <span>→</span></button></div>
+            <div class="hero-orbit"><div class="orbit orbit-1"></div><div class="orbit orbit-2"></div><div class="shield">⌬<small>SECURE</small></div><div class="signal s1"></div><div class="signal s2"></div><div class="signal s3"></div></div>
+          </section>
+          <section class="metrics" aria-label="Security metrics">
+            <article><div class="metric-icon cyan">⌁</div><div><p>Events analyzed</p><strong id="eventCount">2,481,920</strong><small class="positive">↗ 12.4% <span>vs. last 24h</span></small></div></article>
+            <article><div class="metric-icon orange">◉</div><div><p>Threats detected</p><strong id="threatCount">27</strong><small class="warning">↑ 4 <span>since yesterday</span></small></div></article>
+            <article><div class="metric-icon violet">⌁</div><div><p>Detection accuracy</p><strong>98.7%</strong><small class="positive">↗ 0.6% <span>model confidence</span></small></div></article>
+            <article><div class="metric-icon green">◷</div><div><p>Avg. response time</p><strong>1.8 min</strong><small class="positive">↘ 24 sec <span>vs. last week</span></small></div></article>
+          </section>
+          <section class="two-column">
+            <article class="panel activity-panel"><div class="panel-heading"><div><p class="eyebrow">LAST 24 HOURS</p><h3>Threat activity</h3></div><select id="chartRange" aria-label="Chart range"><option>24 hours</option><option>7 days</option></select></div><div class="chart-summary"><strong id="chartTotal">27</strong><span>Detected threats</span><span class="legend"><i></i> Suspicious events</span></div><div class="bar-chart" id="barChart" aria-label="Threat activity bar chart"></div><div class="chart-labels"><span>00:00</span><span>04:00</span><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>Now</span></div></article>
+            <article class="panel incidents-panel"><div class="panel-heading"><div><p class="eyebrow">PRIORITY QUEUE</p><h3>Recent incidents</h3></div><button class="text-button" data-go="alerts">View all →</button></div><div id="incidentList"></div></article>
+          </section>
+        </section>
+
+        <section class="view" id="detection">
+          <section class="console-top"><div><p class="eyebrow">MODULE 03 · MACHINE LEARNING</p><h2>Threat detection console</h2><p>Stream network events through the selected model and inspect classification decisions.</p></div><div class="model-selector"><label for="modelSelect">Active model</label><select id="modelSelect"><option>Random Forest v2.4</option><option>SVM v1.9</option><option>XGBoost v3.1</option></select></div></section>
+          <section class="pipeline"><article><span>01</span><h3>Collect</h3><p>Cloud traffic & logs</p><i>✓</i></article><div>→</div><article><span>02</span><h3>Prepare</h3><p>Clean & extract features</p><i>✓</i></article><div>→</div><article class="current"><span>03</span><h3>Classify</h3><p>ML threat scoring</p><i>●</i></article><div>→</div><article><span>04</span><h3>Alert</h3><p>Notify & report</p><i>○</i></article></section>
+          <section class="console-grid"><article class="panel dropzone"><div class="drop-icon">⇧</div><h3>Analyze a log file</h3><p>Drop a .csv, .json, or .log file here to simulate feature extraction and classification.</p><input type="file" id="fileInput" accept=".csv,.json,.log,.txt" hidden /><button class="secondary-action" id="chooseFile">Choose file</button><small id="fileStatus">No file selected</small></article><article class="panel stream-panel"><div class="panel-heading"><div><p class="eyebrow">STREAMING</p><h3>Live event feed</h3></div><span class="live-mini"><i></i> ACTIVE</span></div><div class="terminal" id="eventFeed"></div></article></section>
+          <section class="panel result-panel" id="scanResult"><div class="empty-result"><span>⌬</span><div><h3>Ready to inspect traffic</h3><p>Run a scan or upload a log file to generate a detection result.</p></div></div></section>
+        </section>
+
+        <section class="view" id="alerts"><section class="alert-header"><div><p class="eyebrow">MODULE 04 · REAL-TIME RESPONSE</p><h2>Security alerts</h2><p>Investigate detected threats and mark incidents as resolved.</p></div><div class="filter-group"><button class="filter active" data-filter="all">All</button><button class="filter" data-filter="critical">Critical</button><button class="filter" data-filter="high">High</button><button class="filter" data-filter="resolved">Resolved</button></div></section><div class="alert-table panel"><div class="alert-row table-head"><span>Severity</span><span>Threat</span><span>Source / target</span><span>Detected</span><span>Status</span><span></span></div><div id="alertRows"></div></div></section>
+
+        <section class="view" id="reports"><section class="report-hero"><p class="eyebrow">SECURITY INTELLIGENCE</p><h2>Reports & analytics</h2><p>Generate a concise security snapshot to share with your team.</p><button class="scan-button" id="downloadReport">↓ Download JSON report</button></section><section class="report-grid"><article class="panel"><p class="eyebrow">THREAT DISTRIBUTION</p><h3>Detection categories</h3><div class="donut-layout"><div class="donut"><span>27<small>total</small></span></div><ul><li><i class="r1"></i>Malware <b>41%</b></li><li><i class="r2"></i>Phishing <b>26%</b></li><li><i class="r3"></i>Intrusion <b>19%</b></li><li><i class="r4"></i>Anomaly <b>14%</b></li></ul></div></article><article class="panel"><p class="eyebrow">MODEL HEALTH</p><h3>Classification performance</h3><div class="performance"><div><span>Precision</span><b>98.2%</b><i><em style="width:98.2%"></em></i></div><div><span>Recall</span><b>97.6%</b><i><em style="width:97.6%"></em></i></div><div><span>F1 score</span><b>97.9%</b><i><em style="width:97.9%"></em></i></div></div></article></section></section>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
