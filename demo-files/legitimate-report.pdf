@@ -1,0 +1,56 @@
+%PDF-1.4
+% ============================================================
+%  DEMO FILE — CloudGuard AI Capstone Presentation
+%  This is a VALID PDF demo file for the SECURE MODE success demo
+% ============================================================
+%
+%  HOW TO USE IN DEMO:
+%  1. Keep SECURE MODE ON (toggle OFF)
+%  2. Upload this file
+%  3. Watch it PASS all checks:
+%     → Size: well under 5MB ✓
+%     → Magic bytes: %PDF [25 50 44 46] matches ✓
+%     → Stored as: random UUID filename (e.g. a3f9c2d1-....pdf)
+%  4. Log shows: ✓ CLEANED status badge
+%
+%  This demonstrates the secure path working correctly!
+% ============================================================
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144]
+/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 130 >>
+stream
+BT
+/F1 14 Tf
+30 100 Td
+(CloudGuard AI - Capstone Demo Report) Tj
+0 -20 Td
+/F1 10 Tf
+(This PDF passed all secure upload checks.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000274 00000 n
+0000000456 00000 n
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+540
+%%EOF

@@ -6,13 +6,14 @@
 
 // ── Constants ──────────────────────────────────────────────
 const NAV_TITLES = {
-  overview:  'Security overview',
-  detection: 'Threat detection',
-  traffic:   'Network traffic',
-  threatmap: 'Global threat map',
-  alerts:    'Security alerts',
-  auditlog:  'Audit log',
-  reports:   'Reports & analytics'
+  overview:   'Security overview',
+  detection:  'Threat detection',
+  traffic:    'Network traffic',
+  threatmap:  'Global threat map',
+  alerts:     'Security alerts',
+  fileupload: 'File upload & threat analysis',
+  auditlog:   'Audit log',
+  reports:    'Reports & analytics'
 };
 
 const MODEL_LABELS = {
@@ -99,7 +100,9 @@ const state = {
   eventsPerMinBucket: [],
   suspiciousCount: 0,
   totalFeedCount: 0,
-  theme: 'dark'
+  theme: 'dark',
+  hackerMode: false,
+  uploadLog: []
 };
 
 // ── Audit Logger ───────────────────────────────────────────
@@ -857,6 +860,263 @@ function wireEvents() {
   });
 }
 
+
+// ══════════════════════════════════════════════════════════
+//  FILE UPLOAD MODULE — Capstone Demo
+//  Implements Secure Mode (Branch A) and Hacker Mode (Branch B)
+// ══════════════════════════════════════════════════════════
+
+// ── Magic Byte Signatures (first bytes of real file types) ─
+const MAGIC_SIGNATURES = {
+  'image/jpeg':       [[0xFF, 0xD8, 0xFF]],
+  'image/png':        [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+  'application/pdf':  [[0x25, 0x50, 0x44, 0x46]]  // %PDF
+};
+
+const ALLOWED_SECURE_MIMES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+const MAX_SECURE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+// ── Generate a cryptographically unpredictable filename ────
+function generateSecureId() {
+  // crypto.randomUUID() is available in all modern browsers
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback: hex from getRandomValues
+  const buf = new Uint8Array(16);
+  crypto.getRandomValues(buf);
+  return [...buf].map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Read first 8 bytes and match magic signatures ──────────
+function verifyMagicBytes(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const bytes = new Uint8Array(e.target.result);
+      for (const [mime, signatures] of Object.entries(MAGIC_SIGNATURES)) {
+        for (const sig of signatures) {
+          if (sig.every((byte, i) => bytes[i] === byte)) {
+            return resolve(mime);
+          }
+        }
+      }
+      resolve(null); // no matching signature — unknown/spoofed
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file.slice(0, 8));
+  });
+}
+
+// ── Simulate upload progress animation ────────────────────
+function simulateProgress(onComplete) {
+  const wrap = $('uploadProgressWrap');
+  const bar  = $('uploadProgressBar');
+  const lbl  = $('uploadProgressLabel');
+  wrap.hidden = false;
+  bar.style.width = '0%';
+  lbl.textContent = 'Processing…';
+  let pct = 0;
+  const tick = setInterval(() => {
+    pct += Math.random() * 22 + 8;
+    if (pct >= 100) {
+      pct = 100;
+      clearInterval(tick);
+      lbl.textContent = 'Complete';
+      setTimeout(() => { wrap.hidden = true; bar.style.width = '0%'; onComplete(); }, 600);
+    }
+    bar.style.width = pct + '%';
+  }, 120);
+}
+
+// ── Core Upload Controller ─────────────────────────────────
+async function fileUploadController(file) {
+  const hackerMode = state.hackerMode;
+  const ts         = new Date();
+  const fileId     = generateSecureId().slice(0, 8).toUpperCase();
+
+  simulateProgress(async () => {
+    let entry;
+
+    if (!hackerMode) {
+      // ══ BRANCH A — SECURE MODE ══════════════════════════
+      // 1. Size check
+      if (file.size > MAX_SECURE_SIZE) {
+        showToast(`❌ REJECTED — File exceeds 5 MB limit (${(file.size/1024/1024).toFixed(2)} MB)`, 'error');
+        audit('upload', `[SECURE] File rejected — size ${(file.size/1024/1024).toFixed(2)} MB exceeds limit: "${file.name}"`);
+        renderUploadLog();
+        return;
+      }
+
+      // 2. Magic-byte MIME verification (do NOT trust extension)
+      const detectedMime = await verifyMagicBytes(file);
+      if (!detectedMime || !ALLOWED_SECURE_MIMES.has(detectedMime)) {
+        const reason = detectedMime ? `invalid type ${detectedMime}` : 'unrecognised magic bytes / spoofed extension';
+        showToast(`❌ REJECTED — ${reason}`, 'error');
+        audit('upload', `[SECURE] File rejected — ${reason}: "${file.name}"`);
+        renderUploadLog();
+        return;
+      }
+
+      // 3. Cryptographic filename randomisation
+      const ext        = detectedMime.split('/')[1].replace('jpeg','jpg');
+      const storedName = `${generateSecureId()}.${ext}`;
+
+      entry = {
+        fileId,
+        storedName,
+        originalName: file.name,
+        detectedMime,
+        status: 'CLEANED',
+        ts
+      };
+
+      showToast(`✅ SECURE — "${file.name}" sanitised & stored as ${storedName.slice(0,18)}…`, 'success');
+      audit('upload', `[SECURE] File accepted — MIME ${detectedMime} verified, stored as ${storedName}: original "${file.name}"`);
+
+    } else {
+      // ══ BRANCH B — HACKER MODE (BYPASS ALL FILTERS) ═════
+      // No size check. No magic-byte check. Preserve original filename.
+      entry = {
+        fileId,
+        storedName: file.name,   // dangerous: original name kept, could be .php/.js etc.
+        originalName: file.name,
+        detectedMime: 'BYPASSED',
+        status: 'VULNERABLE INJECTION',
+        ts
+      };
+
+      showToast(`⚠ HACKER MODE — "${file.name}" stored WITHOUT sanitisation!`, 'error');
+      audit('upload', `[HACKER] All filters BYPASSED — file stored as-is: "${file.name}" — VULNERABLE INJECTION`);
+      // Simulate a new critical incident in the dashboard
+      addIncident('critical', `Unsanitised file upload — possible injection: ${file.name}`, 'File Upload Module');
+    }
+
+    // Write to metadata audit trail
+    state.uploadLog.unshift(entry);
+    if (state.uploadLog.length > 50) state.uploadLog.pop();
+    renderUploadLog();
+  });
+}
+
+// ── Render Upload Audit Log Table ──────────────────────────
+function renderUploadLog() {
+  const container = $('uploadLogRows');
+  if (!container) return;
+  if (!state.uploadLog.length) {
+    container.innerHTML = '<div class="upload-log-empty">No files uploaded yet — use the zone above.</div>';
+    return;
+  }
+  container.innerHTML = state.uploadLog.map(e => {
+    const isVuln = e.status === 'VULNERABLE INJECTION';
+    const badge  = isVuln
+      ? '<span class="status-badge vuln">⚠ VULNERABLE INJECTION</span>'
+      : '<span class="status-badge cleaned">✓ CLEANED</span>';
+    const storedDisplay = isVuln
+      ? `<span class="vuln-name">${e.storedName}</span>`
+      : `<span class="safe-name" title="${e.storedName}">${e.storedName.slice(0,28)}…</span>`;
+    return `<div class="upload-log-row ${isVuln ? 'row-vuln' : 'row-clean'}">
+      <span class="log-id">#${e.fileId}</span>
+      ${storedDisplay}
+      <span>${e.originalName}</span>
+      <span class="log-mime">${e.detectedMime}</span>
+      ${badge}
+      <span class="log-ts">${new Intl.DateTimeFormat('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(e.ts)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Hacker Mode Toggle UI Updates ─────────────────────────
+function applyHackerModeUI(on) {
+  const card       = $('uploadCard');
+  const banner     = $('demoBanner');
+  const icon       = $('demoBannerIcon');
+  const title      = $('demoBannerTitle');
+  const desc       = $('demoBannerDesc');
+  const zoneTitle  = $('uploadZoneTitle');
+  const zoneSub    = $('uploadZoneSub');
+  const fileInput  = $('uploadFileInput');
+
+  if (on) {
+    // HACKER MODE — red, no restrictions
+    card.classList.add('hacker-mode-active');
+    banner.classList.add('banner-hacker');
+    banner.classList.remove('banner-secure');
+    icon.textContent  = '☠';
+    title.textContent = 'HACKER MODE — ALL FILTERS BYPASSED';
+    desc.textContent  = 'No size limit · No MIME check · Original filename preserved · Simulates vulnerable server';
+    zoneTitle.textContent = 'Drop ANY file — no restrictions';
+    zoneSub.textContent   = 'All file types accepted · Simulating vulnerable upload endpoint';
+    fileInput.removeAttribute('accept');
+  } else {
+    // SECURE MODE — green, strict validation
+    card.classList.remove('hacker-mode-active');
+    banner.classList.remove('banner-hacker');
+    banner.classList.add('banner-secure');
+    icon.textContent  = '🔒';
+    title.textContent = 'SECURE MODE ACTIVE';
+    desc.textContent  = 'Magic-byte MIME verification · 5 MB limit · UUID filename randomisation';
+    zoneTitle.textContent = 'Drag & drop file here';
+    zoneSub.textContent   = 'Allowed: JPG, PNG, PDF · Max 5 MB';
+    fileInput.setAttribute('accept', '.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf');
+  }
+}
+
+// ── Wire Upload Module Events ──────────────────────────────
+function initUploadModule() {
+  applyHackerModeUI(false); // start in secure mode
+
+  const zone      = $('uploadZone');
+  const fileInput = $('uploadFileInput');
+  const browseBtn = $('uploadBrowseBtn');
+  const toggle    = $('hackerModeToggle');
+  const clearBtn  = $('clearUploadLog');
+
+  // Browse button
+  browseBtn.addEventListener('click', () => fileInput.click());
+
+  // File input change
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) fileUploadController(file);
+    fileInput.value = ''; // reset so same file can be re-uploaded
+  });
+
+  // Drag & Drop
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) fileUploadController(file);
+  });
+
+  // Hacker Mode Toggle
+  toggle.addEventListener('change', () => {
+    state.hackerMode = toggle.checked;
+    applyHackerModeUI(state.hackerMode);
+    if (state.hackerMode) {
+      showToast('⚠ HACKER MODE ON — All upload filters disabled!', 'error');
+      audit('analyst', 'Demo Presentation Mode ENABLED — upload filters bypassed (HACKER MODE)');
+    } else {
+      showToast('🔒 SECURE MODE restored', 'success');
+      audit('analyst', 'Demo Presentation Mode DISABLED — secure upload restored');
+    }
+  });
+
+  // Clear log
+  clearBtn.addEventListener('click', () => {
+    state.uploadLog = [];
+    renderUploadLog();
+    showToast('Upload log cleared', 'info');
+    audit('analyst', 'Upload audit log cleared');
+  });
+}
+
 // ── Bootstrap ─────────────────────────────────────────────
 function bootstrap() {
   setClock();
@@ -867,6 +1127,7 @@ function bootstrap() {
   renderAlerts();
   initActivityChart();
   initDropzone();
+  initUploadModule();
   wireEvents();
 
   // Live feed ticker

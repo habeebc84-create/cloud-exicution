@@ -24,6 +24,7 @@
           <button class="nav-item" data-view="traffic" id="nav-traffic"><span>⌁</span>Network Traffic</button>
           <button class="nav-item" data-view="threatmap" id="nav-threatmap"><span>◉</span>Threat Map</button>
           <button class="nav-item" data-view="alerts" id="nav-alerts"><span>◇</span>Alerts <b id="alertBadge">3</b></button>
+          <button class="nav-item" data-view="fileupload" id="nav-fileupload"><span>⇧</span>File Upload</button>
           <button class="nav-item" data-view="auditlog" id="nav-auditlog"><span>▤</span>Audit Log</button>
           <button class="nav-item" data-view="reports" id="nav-reports"><span>◑</span>Reports</button>
         </nav>
@@ -205,6 +206,77 @@
           </section>
           <article class="panel" style="margin-top:17px"><p class="eyebrow">WEEKLY TREND</p><h3>Threat volume over 7 days</h3><div class="chart-wrap" style="margin-top:14px"><canvas id="weeklyChart" height="130"></canvas></div></article>
         </section>
+
+        <!-- ══ FILE UPLOAD (CAPSTONE DEMO) ══ -->
+        <section class="view" id="fileupload">
+          <section class="console-top">
+            <div>
+              <p class="eyebrow">MODULE 07 · SECURE FILE INGESTION</p>
+              <h2>File upload &amp; threat analysis</h2>
+              <p>Upload log files or samples for ingestion. Toggle <strong>Demo Presentation Mode</strong> to switch between secure and vulnerable code paths.</p>
+            </div>
+          </section>
+
+          <!-- Demo Mode Toggle Banner -->
+          <div class="demo-banner" id="demoBanner">
+            <div class="demo-banner-inner">
+              <div class="demo-info">
+                <span class="demo-icon" id="demoBannerIcon">🔒</span>
+                <div>
+                  <strong id="demoBannerTitle">SECURE MODE ACTIVE</strong>
+                  <small id="demoBannerDesc">Magic-byte MIME verification · 5 MB limit · UUID filename randomisation</small>
+                </div>
+              </div>
+              <label class="demo-toggle-wrap" aria-label="Toggle Demo Presentation Mode">
+                <span class="demo-toggle-label" id="demoToggleLabel">Demo Presentation Mode</span>
+                <div class="demo-toggle">
+                  <input type="checkbox" id="hackerModeToggle" />
+                  <span class="demo-slider"></span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Upload Card -->
+          <article class="panel upload-card" id="uploadCard">
+            <!-- Drop Zone -->
+            <div class="upload-zone" id="uploadZone">
+              <input type="file" id="uploadFileInput" hidden />
+              <div class="upload-zone-icon" id="uploadZoneIcon">⇧</div>
+              <h3 class="upload-zone-title" id="uploadZoneTitle">Drag &amp; drop file here</h3>
+              <p class="upload-zone-sub" id="uploadZoneSub">Allowed: JPG, PNG, PDF · Max 5 MB</p>
+              <button class="secondary-action" id="uploadBrowseBtn">Browse files</button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="upload-progress-wrap" id="uploadProgressWrap" hidden>
+              <div class="upload-progress-bar" id="uploadProgressBar"></div>
+              <small id="uploadProgressLabel">Processing…</small>
+            </div>
+          </article>
+
+          <!-- Metadata Audit Trail -->
+          <article class="panel" style="margin-top:17px">
+            <div class="panel-heading">
+              <div><p class="eyebrow">UPLOAD AUDIT TRAIL</p><h3>File ingestion log</h3></div>
+              <button class="secondary-action" id="clearUploadLog" style="padding:5px 12px;font-size:11px">Clear log</button>
+            </div>
+            <div class="upload-log-wrap">
+              <div class="upload-log-header">
+                <span>File ID</span>
+                <span>Stored Name</span>
+                <span>Original Name</span>
+                <span>Detected MIME</span>
+                <span>Status</span>
+                <span>Timestamp</span>
+              </div>
+              <div id="uploadLogRows">
+                <div class="upload-log-empty">No files uploaded yet — use the zone above.</div>
+              </div>
+            </div>
+          </article>
+        </section>
+
       </main>
     </div>
 
