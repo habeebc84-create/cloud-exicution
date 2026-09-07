@@ -4,6 +4,75 @@
 
 'use strict';
 
+// ── CloudGuard Cloud API ───────────────────────────────────
+// Silently syncs data to the backend REST API / PostgreSQL DB.
+// All calls are fire-and-forget: they never block the UI.
+const CloudGuardAPI = (() => {
+  const BASE = '/api';
+  const post = (path, body) =>
+    fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(() => {}); // silent — backend may be offline in standalone mode
+
+  const patch = (path) =>
+    fetch(`${BASE}${path}`, { method: 'PATCH' }).catch(() => {});
+
+  const get = (path) =>
+    fetch(`${BASE}${path}`).then(r => r.ok ? r.json() : []).catch(() => []);
+
+  return {
+    /** Save a threat event to the database */
+    saveEvent(type, protocol, ip_address, message, score, model) {
+      post('/events', { type, protocol, ip_address, message, score, model });
+    },
+    /** Save an alert/incident to the database, returns a Promise<{id}> */
+    saveAlert(severity, title, source) {
+      return fetch(`${BASE}/alerts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ severity, title, source })
+      }).then(r => r.ok ? r.json() : null).catch(() => null);
+    },
+    /** Resolve an alert by its DB UUID */
+    resolveAlert(dbId) {
+      patch(`/alerts/${dbId}/resolve`);
+    },
+    /** Load alerts from the database */
+    loadAlerts() {
+      return get('/alerts');
+    },
+    /** Save an audit log entry */
+    saveAudit(category, message) {
+      post('/audit', { category, message });
+    },
+    /** Save a report snapshot */
+    saveReport(title, threat_count, event_count, model, payload) {
+      post('/reports', { title, threat_count, event_count, model, payload });
+    },
+    /** Load connected devices from DB/API */
+    loadDevices() {
+      return get('/devices');
+    },
+    /** Update connected device status/isolation */
+    updateDevice(id, data) {
+      return fetch(`${BASE}/devices/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(r => r.ok ? r.json() : null).catch(() => null);
+    },
+    /** Check if backend is reachable */
+    async isOnline() {
+      try {
+        const r = await fetch(`${BASE}/health`);
+        return r.ok;
+      } catch { return false; }
+    }
+  };
+})();
+
 // ── Constants ──────────────────────────────────────────────
 const NAV_TITLES = {
   overview:   'Security overview',
@@ -40,7 +109,13 @@ const GEO_SOURCES = [
   { city: 'Jakarta',     country: 'Indonesia',     lat: -6.21, lng: 106.84, flag: '🇮🇩' }
 ];
 
-const TARGET = { lat: 39.04, lng: -77.49, label: 'AWS us-east-1' };
+const TARGETS = {
+  'aws-us-east-1':    { lat: 39.04, lng: -77.49, label: 'AWS us-east-1 (N. Virginia)', provider: 'AWS' },
+  'gcp-us-central1':  { lat: 41.26, lng: -95.86, label: 'GCP us-central1 (Iowa)',       provider: 'GCP' },
+  'azure-westeurope': { lat: 52.37, lng: 4.90,   label: 'Azure westeurope (Amsterdam)', provider: 'Azure' },
+  'ap-northeast-1':   { lat: 35.68, lng: 139.76, label: 'AWS ap-northeast-1 (Tokyo)',   provider: 'AWS' }
+};
+let TARGET = TARGETS['aws-us-east-1'];
 
 const EVENT_TEMPLATES = [
   { type: 'safe',       proto: 'HTTPS', msg: 'Normal HTTPS traffic classified benign',       score: () => rnd(0.01, 0.09) },
@@ -102,7 +177,28 @@ const state = {
   totalFeedCount: 0,
   theme: 'dark',
   hackerMode: false,
-  uploadLog: []
+  uploadLog: [],
+  // ── Connected Devices Inventory ──
+  devices: [
+    { id: 'dev-01', name: 'k8s-prod-worker-01',     type: 'server',      role: 'Kubernetes Worker Node',   ip: '10.0.12.4',    mac: '02:42:0a:00:0c:04', vpc: 'prod-vpc-us-east', zone: 'us-east-1a', proto: 'TCP / 10250', in_mb: 412.8, out_mb: 189.4, pps: 2450, status: 'online',      os: 'Ubuntu 22.04 LTS (K8s v1.29)', isolated: false, icon: '🖥️' },
+    { id: 'dev-02', name: 'api-gateway-prod',       type: 'gateway',     role: 'Envoy Edge API Gateway',   ip: '10.0.1.10',    mac: '02:42:0a:00:01:0a', vpc: 'dmz-vpc-us-east',  zone: 'us-east-1a', proto: 'HTTPS / 443',  in_mb: 890.2, out_mb: 742.1, pps: 4890, status: 'online',      os: 'Alpine Linux (Envoy Proxy)',   isolated: false, icon: '🌐' },
+    { id: 'dev-03', name: 'postgres-primary-db',    type: 'database',    role: 'PostgreSQL DB Primary',    ip: '10.0.8.25',    mac: '02:42:0a:00:08:19', vpc: 'data-vpc-us-east', zone: 'us-east-1b', proto: 'TCP / 5432',   in_mb: 674.3, out_mb: 891.0, pps: 3720, status: 'high-traffic',os: 'Debian 12 (PostgreSQL 16)',    isolated: false, icon: '🗄️' },
+    { id: 'dev-04', name: 'redis-cache-cluster-01', type: 'database',    role: 'Redis Cache Cluster',      ip: '10.0.4.88',    mac: '02:42:0a:00:04:58', vpc: 'data-vpc-us-east', zone: 'us-east-1b', proto: 'TCP / 6379',   in_mb: 320.1, out_mb: 210.5, pps: 3100, status: 'online',      os: 'Alpine Linux (Redis 7.2)',     isolated: false, icon: '⚡' },
+    { id: 'dev-05', name: 'auth-service-pod-3b',    type: 'server',      role: 'Auth Microservice Pod',    ip: '10.244.3.15',  mac: '02:42:0a:f4:03:0f', vpc: 'prod-vpc-us-east', zone: 'us-east-1a', proto: 'gRPC / 50051',  in_mb: 154.6, out_mb: 98.2,  pps: 1420, status: 'online',      os: 'Go Container (Distroless)',    isolated: false, icon: '📦' },
+    { id: 'dev-06', name: 'edge-load-balancer-us',  type: 'gateway',     role: 'Global Cloud Load Balancer',ip: '192.168.1.1', mac: '52:54:00:12:34:56', vpc: 'edge-anycast-net', zone: 'global-edge',proto: 'HTTP2 / 443',   in_mb: 1240.5,out_mb: 1180.2,pps: 6900, status: 'high-traffic',os: 'EdgeOS / Cloudflare Node',     isolated: false, icon: '🌍' },
+    { id: 'dev-07', name: 'bastion-jump-host',      type: 'security',    role: 'SSH Bastion Jump Host',    ip: '10.0.99.2',    mac: '02:42:0a:00:63:02', vpc: 'mgmt-vpc-us-east', zone: 'us-east-1c', proto: 'SSH / 22',     in_mb: 45.3,  out_mb: 38.1,  pps: 410,  status: 'online',      os: 'Hardened Alpine Linux',        isolated: false, icon: '🔒' },
+    { id: 'dev-08', name: 'secops-analyst-laptop',  type: 'workstation', role: 'Security Analyst Endpoint', ip: '192.168.50.12',mac: 'a4:83:e7:21:bc:44',vpc: 'corp-vpn-pool',   zone: 'remote-office',proto: 'HTTPS / 443',  in_mb: 68.4,  out_mb: 32.7,  pps: 580,  status: 'online',      os: 'macOS Sonoma (SecOps)',        isolated: false, icon: '💻' },
+    { id: 'dev-09', name: 'corp-vpn-gateway',       type: 'gateway',     role: 'WireGuard VPN Gateway',    ip: '172.16.0.1',   mac: '02:42:ac:10:00:01', vpc: 'vpn-vpc-us-east',  zone: 'us-east-1a', proto: 'UDP / 51820',   in_mb: 290.4, out_mb: 280.9, pps: 2150, status: 'online',      os: 'Linux Kernel (WireGuard)',     isolated: false, icon: '🛡️' },
+    { id: 'dev-10', name: 'iot-telemetry-collector',type: 'security',    role: 'IoT Fleet Telemetry Node', ip: '10.0.35.80',   mac: '02:42:0a:00:23:50', vpc: 'iot-vpc-us-east',   zone: 'us-east-1c', proto: 'MQTT / 8883',   in_mb: 185.0, out_mb: 42.1,  pps: 1890, status: 'suspicious',  os: 'FreeBSD 14 / Mosquitto',       isolated: false, icon: '📡' }
+  ],
+  deviceFilter: 'all',
+  deviceSearch: '',
+  deviceInspected: null,
+  prevInbound: 45.2,
+  prevOutbound: 22.8,
+  prevPps: 3400,
+  mapSeverity: 'all',
+  mapStreamPaused: false
 };
 
 // ── Audit Logger ───────────────────────────────────────────
@@ -110,6 +206,8 @@ function audit(category, msg) {
   state.auditLog.unshift({ ts: new Date(), category, msg });
   if (state.auditLog.length > 200) state.auditLog.pop();
   if ($('auditlog') && $('auditlog').classList.contains('active')) renderAuditLog('all');
+  // ── Persist audit entry to DB ───────────────────────────────
+  CloudGuardAPI.saveAudit(category, msg);
 }
 
 // ── Toast ──────────────────────────────────────────────────
@@ -173,7 +271,7 @@ function renderAlerts(filter = 'all') {
 }
 
 function addIncident(severity, title, source) {
-  const inc = { id: state.nextId++, severity, title, source, ts: new Date(), status: 'open' };
+  const inc = { id: state.nextId++, severity, title, source, ts: new Date(), status: 'open', dbId: null };
   state.incidents.unshift(inc);
   state.threats++;
   $('threatCount').textContent = state.threats;
@@ -182,6 +280,10 @@ function addIncident(severity, title, source) {
   renderAlerts(document.querySelector('.filter.active')?.dataset.filter || 'all');
   pushNotification(`🚨 ${severity.toUpperCase()}: ${title}`, severity);
   audit('alert', `New ${severity} alert: "${title}" from ${source}`);
+  // ── Persist to DB ──────────────────────────────────────────
+  CloudGuardAPI.saveAlert(severity, title, source).then(saved => {
+    if (saved) inc.dbId = saved.id; // store DB UUID for later resolve
+  });
 }
 
 // ── Notification Center ────────────────────────────────────
@@ -237,6 +339,11 @@ function appendFeed() {
   $('eventsPerMin').textContent = state.eventsPerMinBucket.length;
   const rate = state.totalFeedCount > 0 ? Math.round(state.suspiciousCount / state.totalFeedCount * 100) : 0;
   $('suspiciousRate').textContent = rate + '%';
+
+  // ── Persist event to DB (threat & suspicious only, to keep volume low) ──
+  if (tpl.type !== 'safe') {
+    CloudGuardAPI.saveEvent(tpl.type, tpl.proto, ip, tpl.msg, score, MODEL_LABELS[state.activeModel]);
+  }
 
   // Randomly escalate threat to incident
   if (tpl.type === 'threat' && Math.random() < 0.18) {
@@ -696,6 +803,14 @@ function downloadReport() {
   URL.revokeObjectURL(link.href);
   showToast('Security report downloaded', 'success');
   audit('analyst', 'Full security report exported');
+  // ── Persist report snapshot to DB ─────────────────────────
+  CloudGuardAPI.saveReport(
+    `CloudGuard Report ${new Date().toLocaleDateString()}`,
+    state.threats,
+    state.events,
+    MODEL_LABELS[state.activeModel],
+    report
+  );
 }
 
 // ── Drag & Drop ────────────────────────────────────────────
@@ -1118,7 +1233,7 @@ function initUploadModule() {
 }
 
 // ── Bootstrap ─────────────────────────────────────────────
-function bootstrap() {
+async function bootstrap() {
   setClock();
   setInterval(setClock, 1000);
   seedFeed();
@@ -1147,6 +1262,36 @@ function bootstrap() {
   });
 
   audit('system', 'CloudGuard AI dashboard initialised successfully');
+
+  // ── Load persisted alerts from DB (if backend is available) ──
+  const online = await CloudGuardAPI.isOnline();
+  if (online) {
+    showToast('☁ Connected to CloudGuard cloud storage', 'success');
+    const dbAlerts = await CloudGuardAPI.loadAlerts();
+    if (dbAlerts.length) {
+      // Merge DB alerts, avoiding duplicates by title+source
+      const existing = new Set(state.incidents.map(i => i.title + i.source));
+      dbAlerts.forEach(a => {
+        const key = a.title + (a.source || '');
+        if (!existing.has(key)) {
+          state.incidents.push({
+            id: state.nextId++,
+            dbId: a.id,
+            severity: a.severity,
+            title: a.title,
+            source: a.source || 'unknown',
+            ts: new Date(a.ts),
+            status: a.status
+          });
+          existing.add(key);
+        }
+      });
+      renderIncidents();
+      renderAlerts();
+    }
+  } else {
+    showToast('ℹ Running in standalone mode (no DB)', 'info');
+  }
 }
 
 bootstrap();

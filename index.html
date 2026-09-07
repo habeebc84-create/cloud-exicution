@@ -131,41 +131,114 @@
 
         <!-- ══ NETWORK TRAFFIC ══ -->
         <section class="view" id="traffic">
-          <section class="console-top"><div><p class="eyebrow">MODULE 02 · NETWORK ANALYSIS</p><h2>Network traffic monitor</h2><p>Real-time throughput, packet analysis, and protocol breakdown across your cloud infrastructure.</p></div></section>
+          <section class="console-top">
+            <div>
+              <p class="eyebrow">MODULE 02 · NETWORK ANALYSIS</p>
+              <h2>Network traffic monitor</h2>
+              <p>Real-time throughput, packet analysis, connected device inventory, and protocol breakdown across your cloud infrastructure.</p>
+            </div>
+            <div class="header-actions">
+              <span class="live-pulse-badge"><i class="pulse-dot"></i> Live Stream</span>
+              <button class="scan-button" id="scanDevicesBtn">⚡ Discover Nodes</button>
+            </div>
+          </section>
           <section class="traffic-metrics">
-            <article class="panel traffic-card"><p class="eyebrow">INBOUND</p><strong id="inboundRate">0 MB/s</strong><small class="positive" id="inboundTrend">↗ stable</small></article>
-            <article class="panel traffic-card"><p class="eyebrow">OUTBOUND</p><strong id="outboundRate">0 MB/s</strong><small class="positive" id="outboundTrend">↗ stable</small></article>
+            <article class="panel traffic-card"><p class="eyebrow">INBOUND</p><strong id="inboundRate">0.0 MB/s</strong><small class="positive" id="inboundTrend">↗ stable</small></article>
+            <article class="panel traffic-card"><p class="eyebrow">OUTBOUND</p><strong id="outboundRate">0.0 MB/s</strong><small class="positive" id="outboundTrend">↗ stable</small></article>
             <article class="panel traffic-card"><p class="eyebrow">PACKETS/SEC</p><strong id="ppsRate">0</strong><small id="ppsTrend">—</small></article>
+            <article class="panel traffic-card"><p class="eyebrow">CONNECTED NODES</p><strong id="deviceCount">10 Online</strong><small class="positive" id="deviceTrend">✓ 10/10 active</small></article>
             <article class="panel traffic-card"><p class="eyebrow">ANOMALY SCORE</p><strong id="anomalyScore" class="warning">0.00</strong><small class="muted">0 = benign · 1 = threat</small></article>
           </section>
           <section class="two-column" style="margin-top:17px">
             <article class="panel">
               <div class="panel-heading"><div><p class="eyebrow">REAL-TIME</p><h3>Throughput (MB/s)</h3></div><span class="live-mini"><i></i> LIVE</span></div>
-              <div class="chart-wrap" style="margin-top:14px"><canvas id="throughputChart" height="160"></canvas></div>
+              <div class="chart-wrap" style="height: 190px; position: relative; margin-top: 14px;"><canvas id="throughputChart"></canvas></div>
             </article>
             <article class="panel">
               <div class="panel-heading"><div><p class="eyebrow">PROTOCOL BREAKDOWN</p><h3>Traffic by type</h3></div></div>
               <div class="proto-list" id="protoList"></div>
             </article>
           </section>
+
+          <!-- Top Talker Nodes -->
           <article class="panel" style="margin-top:17px">
-            <div class="panel-heading"><div><p class="eyebrow">TOP TALKERS</p><h3>High-traffic endpoints</h3></div></div>
+            <div class="panel-heading">
+              <div><p class="eyebrow">BANDWIDTH USAGE</p><h3>Top talker nodes &amp; devices</h3></div>
+              <span class="muted" style="font-size:11px">High-throughput active instances</span>
+            </div>
             <div class="top-talkers" id="topTalkers"></div>
+          </article>
+
+          <!-- Connected Cloud Devices & Nodes Inventory -->
+          <article class="panel" style="margin-top:17px">
+            <div class="panel-heading" style="flex-wrap: wrap; gap: 12px;">
+              <div>
+                <p class="eyebrow">DEVICE TOPOLOGY &amp; ASSETS</p>
+                <h3>Connected cloud devices &amp; nodes</h3>
+              </div>
+              <div class="device-controls">
+                <input type="text" id="deviceSearch" placeholder="Search devices by name, IP, or type..." class="device-search-input" />
+                <div class="filter-group device-filters">
+                  <button class="filter dev-filter active" data-devfilter="all">All (10)</button>
+                  <button class="filter dev-filter" data-devfilter="server">Servers</button>
+                  <button class="filter dev-filter" data-devfilter="database">Databases</button>
+                  <button class="filter dev-filter" data-devfilter="gateway">Gateways</button>
+                  <button class="filter dev-filter" data-devfilter="workstation">Endpoints</button>
+                </div>
+              </div>
+            </div>
+            <div class="device-table-wrap">
+              <div class="device-table-head">
+                <span>Device Name</span>
+                <span>Role / Category</span>
+                <span>IP / Subnet</span>
+                <span>MAC / NIC</span>
+                <span>Live Bandwidth</span>
+                <span>Packets</span>
+                <span>Status</span>
+                <span>Action</span>
+              </div>
+              <div class="device-table" id="deviceList"></div>
+            </div>
           </article>
         </section>
 
         <!-- ══ THREAT MAP ══ -->
         <section class="view" id="threatmap">
           <section class="console-top">
-            <div><p class="eyebrow">MODULE 05 · GEO-IP INTELLIGENCE</p><h2>Global threat map</h2><p>Live attack origin tracking across your cloud perimeter using geo-IP intelligence.</p></div>
+            <div>
+              <p class="eyebrow">MODULE 05 · GEO-IP INTELLIGENCE</p>
+              <h2>Global threat map</h2>
+              <p>Live attack origin tracking across your cloud perimeter using geo-IP intelligence.</p>
+            </div>
+            <div class="map-controls">
+              <div class="target-selector-wrap">
+                <span class="ctrl-label">Protected Target:</span>
+                <select id="targetRegionSelect" class="region-select">
+                  <option value="aws-us-east-1" selected>AWS us-east-1 (N. Virginia)</option>
+                  <option value="gcp-us-central1">GCP us-central1 (Iowa)</option>
+                  <option value="azure-westeurope">Azure westeurope (Amsterdam)</option>
+                  <option value="ap-northeast-1">AWS ap-northeast-1 (Tokyo)</option>
+                </select>
+              </div>
+              <div class="filter-group map-filter-group">
+                <button class="filter map-sev-filter active" data-mapsev="all">All</button>
+                <button class="filter map-sev-filter" data-mapsev="critical">Critical</button>
+                <button class="filter map-sev-filter" data-mapsev="high">High</button>
+              </div>
+              <button class="icon-button" id="toggleMapStreamBtn" title="Pause / Resume Live Feed" style="width: 34px; height: 34px; font-size: 13px;">⏸</button>
+            </div>
+          </section>
+          <div class="map-status-bar">
             <div class="map-legend">
               <span><i class="dot-red"></i> Active attack</span>
               <span><i class="dot-orange"></i> Suspicious</span>
               <span><i class="dot-green"></i> Monitored</span>
             </div>
-          </section>
+            <div class="map-badge" id="mapLiveCount"><i class="pulse-dot"></i> <span>Live Incursions: 12</span></div>
+          </div>
           <article class="panel map-panel">
-            <div id="threatMapContainer"></div>
+            <div id="threatMapContainer" style="height: 480px; width: 100%; border-radius: 12px; position: relative;"></div>
           </article>
           <section class="two-column" style="margin-top:17px">
             <article class="panel">
@@ -282,6 +355,25 @@
 
     <!-- Toast -->
     <div class="toast" id="toast" role="status"></div>
+
+    <!-- Device Inspection Modal -->
+    <div class="modal-overlay" id="deviceModalOverlay" hidden>
+      <div class="modal device-modal" role="dialog" aria-label="Device Details">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow" id="devModalEyebrow">NODE TELEMETRY &amp; NETWORK TRACE</p>
+            <h3 id="devModalTitle">Device Details</h3>
+          </div>
+          <button class="modal-close" id="closeDeviceModal">✕</button>
+        </div>
+        <div class="modal-body" id="devModalBody">
+          <!-- Populated dynamically by JS -->
+        </div>
+        <div class="modal-footer" id="devModalFooter">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+    </div>
 
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settingsOverlay" hidden>
