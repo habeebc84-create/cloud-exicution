@@ -227,16 +227,42 @@ function setClock() {
   }).format(new Date());
 }
 
-// ── Navigation ─────────────────────────────────────────────
-function switchView(view) {
+// ── Navigation & Section Routing ────────────────────────────
+function switchView(view, updateUrl = true) {
+  if (!NAV_TITLES[view]) view = 'overview';
+
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $('pageTitle').textContent = NAV_TITLES[view] || view;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (updateUrl) {
+    const targetHash = `#/section/${view}`;
+    if (window.location.hash !== targetHash) {
+      history.pushState({ view }, '', targetHash);
+    }
+  }
+
   if (view === 'threatmap' && !mapState.initialized) initMap();
   if (view === 'traffic') updateTrafficView();
   if (view === 'devices' || view === 'traffic') renderDevices();
   if (view === 'auditlog') renderAuditLog('all');
+}
+
+function getViewFromURL() {
+  const hash = window.location.hash || '';
+  const hashMatch = hash.match(/^#\/?(?:section\/)?([a-z0-9_-]+)/i);
+  if (hashMatch && NAV_TITLES[hashMatch[1].toLowerCase()]) {
+    return hashMatch[1].toLowerCase();
+  }
+
+  const path = window.location.pathname || '';
+  const pathMatch = path.match(/^\/?(?:section\/)([a-z0-9_-]+)/i);
+  if (pathMatch && NAV_TITLES[pathMatch[1].toLowerCase()]) {
+    return pathMatch[1].toLowerCase();
+  }
+
+  return 'overview';
 }
 
 // ── Incidents & Alerts ─────────────────────────────────────
@@ -1020,14 +1046,27 @@ function seedAuditLog() {
 function wireEvents() {
   // Navigation
   document.querySelectorAll('.nav-item').forEach(btn =>
-    btn.addEventListener('click', () => {
-      switchView(btn.dataset.view);
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView(btn.dataset.view, true);
       if (btn.dataset.view === 'reports') { initWeeklyChart(); }
     })
   );
   document.querySelectorAll('[data-go]').forEach(btn =>
-    btn.addEventListener('click', () => switchView(btn.dataset.go))
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView(btn.dataset.go, true);
+    })
   );
+
+  window.addEventListener('hashchange', () => {
+    const v = getViewFromURL();
+    switchView(v, false);
+  });
+  window.addEventListener('popstate', (e) => {
+    const v = (e.state && e.state.view) || getViewFromURL();
+    switchView(v, false);
+  });
 
   // Scan button
   $('scanButton').addEventListener('click', () => {
@@ -1431,6 +1470,14 @@ async function bootstrap() {
   initDropzone();
   initUploadModule();
   wireEvents();
+
+  // Route to section specified in URL
+  const initialView = getViewFromURL();
+  if (initialView && initialView !== 'overview') {
+    switchView(initialView, false);
+  } else if (!window.location.hash) {
+    history.replaceState({ view: 'overview' }, '', '#/section/overview');
+  }
 
   // Live feed ticker
   setInterval(appendFeed, 3800);

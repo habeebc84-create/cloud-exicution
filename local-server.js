@@ -175,6 +175,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Static File Serving ─────────────────────────────────────
+  if (url.startsWith('/section/')) {
+    return serveStatic(res, path.join(ROOT_DIR, 'index.html'));
+  }
   let filePath = path.join(ROOT_DIR, url === '/' ? 'index.html' : url);
   // Security: prevent path traversal
   if (!filePath.startsWith(ROOT_DIR)) {

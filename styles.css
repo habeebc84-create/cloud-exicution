@@ -120,17 +120,22 @@ nav { display: grid; gap: 4px; }
   transition: background var(--transition), color var(--transition);
   white-space: nowrap;
   overflow: hidden;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
 }
-.nav-item span { font-size: 16px; width: 26px; display: inline-block; color: #b4cbc5; }
+.nav-item span { font-size: 16px; width: 26px; display: inline-block; color: #b4cbc5; flex-shrink: 0; }
 .nav-item.active, .nav-item:hover { color: #eafff7; background: rgba(90,228,210,.11); }
 .nav-item.active span { color: var(--cyan); }
 .nav-item b {
-  float: right;
+  margin-left: auto;
   background: #ff8175;
   color: #2b1010;
   border-radius: 20px;
   padding: 1px 6px;
   font-size: 10px;
+  flex-shrink: 0;
 }
 
 .sidebar-bottom { margin-top: auto; }
