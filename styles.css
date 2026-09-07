@@ -728,7 +728,7 @@ button { font-family: inherit; cursor: pointer; }
 .device-table-wrap { margin-top: 16px; overflow-x: auto; }
 .device-table-head {
   display: grid;
-  grid-template-columns: 230px 170px 150px 150px 140px 90px 110px 120px;
+  grid-template-columns: 220px 160px 150px 140px 170px 140px 90px 110px 110px;
   gap: 10px;
   padding: 10px 14px;
   font: 700 10px 'DM Mono';
@@ -738,12 +738,12 @@ button { font-family: inherit; cursor: pointer; }
   letter-spacing: .5px;
   background: rgba(90,228,210,.03);
   border-radius: 6px 6px 0 0;
-  min-width: 1060px;
+  min-width: 1200px;
 }
-.device-table { display: flex; flex-direction: column; min-width: 1060px; }
+.device-table { display: flex; flex-direction: column; min-width: 1200px; }
 .device-row {
   display: grid;
-  grid-template-columns: 230px 170px 150px 150px 140px 90px 110px 120px;
+  grid-template-columns: 220px 160px 150px 140px 170px 140px 90px 110px 110px;
   gap: 10px;
   padding: 12px 14px;
   align-items: center;
@@ -754,6 +754,16 @@ button { font-family: inherit; cursor: pointer; }
 .device-row:hover { background: rgba(90,228,210,.04); }
 .device-row:last-child { border-bottom: 0; }
 .device-row.isolated { opacity: .55; background: rgba(255,95,95,.03); }
+
+.dev-vpc-cell { display: flex; flex-direction: column; gap: 2px; }
+.dev-vpc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 11px 'DM Mono';
+  color: var(--cyan);
+}
+.dev-vpc-zone { font: 10px 'DM Mono'; color: var(--muted); }
 
 .dev-cell-name { display: flex; align-items: center; gap: 10px; }
 .dev-icon-badge {

@@ -78,6 +78,7 @@ const NAV_TITLES = {
   overview:   'Security overview',
   detection:  'Threat detection',
   traffic:    'Network traffic',
+  devices:    'Connected cloud devices & infrastructure',
   threatmap:  'Global threat map',
   alerts:     'Security alerts',
   fileupload: 'File upload & threat analysis',
@@ -234,6 +235,7 @@ function switchView(view) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (view === 'threatmap' && !mapState.initialized) initMap();
   if (view === 'traffic') updateTrafficView();
+  if (view === 'devices' || view === 'traffic') renderDevices();
   if (view === 'auditlog') renderAuditLog('all');
 }
 
@@ -595,6 +597,167 @@ function updateTrafficView() {
     <span class="talker-bytes">${t.bytes} MB</span>
     <span class="talker-risk ${t.risk}">${t.risk === 'high' ? '⚠ HIGH' : '✓ OK'}</span>
   </div>`).join('');
+}
+
+// ── Connected Devices Registry ──────────────────────────────
+function renderDevices() {
+  const listEl = $('deviceList');
+  const trafficListEl = $('trafficDeviceList');
+  if (!listEl && !trafficListEl) return;
+
+  const q = (state.deviceSearch || '').trim().toLowerCase();
+  const filter = state.deviceFilter || 'all';
+
+  const filtered = state.devices.filter(d => {
+    if (filter === 'isolated' && !d.isolated) return false;
+    if (filter !== 'all' && filter !== 'isolated' && d.type !== filter) return false;
+
+    if (q) {
+      const match = (
+        (d.name && d.name.toLowerCase().includes(q)) ||
+        (d.ip && d.ip.toLowerCase().includes(q)) ||
+        (d.mac && d.mac.toLowerCase().includes(q)) ||
+        (d.vpc && d.vpc.toLowerCase().includes(q)) ||
+        (d.role && d.role.toLowerCase().includes(q)) ||
+        (d.os && d.os.toLowerCase().includes(q)) ||
+        (d.proto && d.proto.toLowerCase().includes(q)) ||
+        (d.zone && d.zone.toLowerCase().includes(q))
+      );
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  const totalCount = state.devices.length;
+  const onlineCount = state.devices.filter(d => !d.isolated && d.status === 'online').length;
+  const flaggedCount = state.devices.filter(d => !d.isolated && (d.status === 'suspicious' || d.status === 'high-traffic')).length;
+  const isolatedCount = state.devices.filter(d => d.isolated).length;
+
+  if ($('totalDevCount')) $('totalDevCount').textContent = totalCount;
+  if ($('onlineDevCount')) $('onlineDevCount').textContent = onlineCount;
+  if ($('flaggedDevCount')) $('flaggedDevCount').textContent = flaggedCount;
+  if ($('isolatedDevCount')) $('isolatedDevCount').textContent = isolatedCount;
+  if ($('deviceBadge')) $('deviceBadge').textContent = totalCount;
+  if ($('overviewDevCount')) $('overviewDevCount').textContent = `${totalCount} nodes`;
+  if ($('overviewDevSub')) {
+    $('overviewDevSub').textContent = `● ${onlineCount} online · ${flaggedCount} flagged`;
+  }
+  if ($('quarantineSub')) {
+    $('quarantineSub').textContent = isolatedCount > 0 ? `⚠ ${isolatedCount} isolated from network` : 'No devices isolated';
+    $('quarantineSub').className = isolatedCount > 0 ? 'warning' : 'positive';
+  }
+
+  const html = filtered.length === 0 ? `
+    <div style="padding: 32px 16px; text-align: center; color: var(--muted); font-size: 13px;">
+      No devices found matching "${q || filter}".
+    </div>
+  ` : filtered.map(dev => {
+    const isIso = dev.isolated;
+    const maxBw = 1500;
+    const bwPct = Math.min(100, Math.round(((dev.in_mb + dev.out_mb) / maxBw) * 100));
+
+    return `
+      <div class="device-row ${isIso ? 'isolated' : ''}">
+        <!-- 1. Device Hostname & OS -->
+        <div class="dev-cell-name">
+          <div class="dev-icon-badge">${dev.icon || '🖥️'}</div>
+          <div class="dev-name-text">
+            <span class="dev-name-title">${dev.name}</span>
+            <span class="dev-name-sub" title="${dev.os}">${dev.os}</span>
+          </div>
+        </div>
+
+        <!-- 2. Role / Category -->
+        <div>
+          <span class="dev-role-badge">${dev.role}</span>
+        </div>
+
+        <!-- 3. IP Address & Port -->
+        <div class="dev-ip-cell">
+          <strong style="color:var(--cyan);font-family:'DM Mono'">${dev.ip}</strong>
+          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">${dev.proto}</div>
+        </div>
+
+        <!-- 4. MAC / NIC -->
+        <div class="dev-mac-cell">
+          <span>${dev.mac}</span>
+        </div>
+
+        <!-- 5. Connected Network / VPC -->
+        <div class="dev-vpc-cell">
+          <span class="dev-vpc-badge">☁ ${dev.vpc}</span>
+          <span class="dev-vpc-zone">${dev.zone || 'us-east-1'}</span>
+        </div>
+
+        <!-- 6. Live Bandwidth -->
+        <div class="dev-bw-cell">
+          <span class="dev-bw-text">↓${dev.in_mb.toFixed(1)}M  ↑${dev.out_mb.toFixed(1)}M</span>
+          <div class="dev-bw-bar"><div class="dev-bw-fill" style="width:${bwPct}%;background:${dev.status==='high-traffic'?'var(--orange)':dev.status==='suspicious'?'var(--red)':'var(--cyan)'}"></div></div>
+        </div>
+
+        <!-- 7. Packets -->
+        <div class="dev-packets-cell">
+          ${fmtN(dev.pps)} pps
+        </div>
+
+        <!-- 8. Status -->
+        <div>
+          <span class="dev-status-pill ${isIso ? 'isolated' : dev.status}">
+            ● ${isIso ? 'ISOLATED' : dev.status.toUpperCase()}
+          </span>
+        </div>
+
+        <!-- 9. Quarantine Action -->
+        <div class="dev-actions">
+          <button class="dev-btn-isolate ${isIso ? 'reconnect' : ''}" onclick="toggleDeviceIsolation('${dev.id}')">
+            ${isIso ? '✓ Reconnect' : '🔒 Isolate'}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (listEl) listEl.innerHTML = html;
+  if (trafficListEl) trafficListEl.innerHTML = html;
+}
+
+window.toggleDeviceIsolation = function(id) {
+  const dev = state.devices.find(d => d.id === id);
+  if (!dev) return;
+
+  dev.isolated = !dev.isolated;
+  const act = dev.isolated ? 'QUARANTINED / ISOLATED' : 'RECONNECTED';
+  showToast(`${dev.isolated ? '🔒' : '✓'} Device "${dev.name}" (${dev.ip}) is now ${act}`, dev.isolated ? 'warning' : 'success');
+  audit('analyst', `Device ${dev.name} [${dev.ip}] was ${act} on network ${dev.vpc}`);
+
+  CloudGuardAPI.updateDevice(id, { isolated: dev.isolated });
+  renderDevices();
+};
+
+function scanDevices() {
+  const btn = $('scanDevicesBtn');
+  if (btn) {
+    btn.innerHTML = '<span class="spin">⟳</span> Scanning subnets...';
+    btn.disabled = true;
+  }
+  showToast('📡 Broadcasting ARP ping across all VPC networks & subnets...', 'info');
+
+  setTimeout(() => {
+    state.devices.forEach(d => {
+      d.in_mb = Math.max(10, +(d.in_mb + rnd(-20, 35)).toFixed(1));
+      d.out_mb = Math.max(5, +(d.out_mb + rnd(-15, 25)).toFixed(1));
+      d.pps = Math.max(200, rndI(d.pps - 200, d.pps + 300));
+    });
+
+    renderDevices();
+    showToast(`✓ Network ARP scan completed: ${state.devices.length} endpoints responding`, 'success');
+    audit('system', `Network discovery scan completed on ${state.devices.length} nodes`);
+
+    if (btn) {
+      btn.innerHTML = '<span>⟳</span> Scan network (ARP)';
+      btn.disabled = false;
+    }
+  }, 900);
 }
 
 // ── Leaflet Threat Map ─────────────────────────────────────
@@ -973,6 +1136,29 @@ function wireEvents() {
     setRefreshInterval(Number(e.target.value));
     audit('analyst', `Auto-refresh interval set to ${e.target.value === '0' ? 'off' : e.target.value + 'ms'}`);
   });
+
+  // Device search & filters
+  const devSearch = $('deviceSearch');
+  if (devSearch) {
+    devSearch.addEventListener('input', e => {
+      state.deviceSearch = e.target.value;
+      renderDevices();
+    });
+  }
+
+  document.querySelectorAll('.dev-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.dev-filter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.deviceFilter = btn.dataset.devfilter;
+      renderDevices();
+    });
+  });
+
+  const scanDevBtn = $('scanDevicesBtn');
+  if (scanDevBtn) {
+    scanDevBtn.addEventListener('click', scanDevices);
+  }
 }
 
 
@@ -1240,6 +1426,7 @@ async function bootstrap() {
   seedAuditLog();
   renderIncidents();
   renderAlerts();
+  renderDevices();
   initActivityChart();
   initDropzone();
   initUploadModule();
@@ -1288,6 +1475,12 @@ async function bootstrap() {
       });
       renderIncidents();
       renderAlerts();
+    }
+
+    const dbDevices = await CloudGuardAPI.loadDevices();
+    if (dbDevices && Array.isArray(dbDevices) && dbDevices.length) {
+      state.devices = dbDevices;
+      renderDevices();
     }
   } else {
     showToast('ℹ Running in standalone mode (no DB)', 'info');

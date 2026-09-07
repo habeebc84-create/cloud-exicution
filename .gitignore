@@ -2,3 +2,4 @@
 # Environment secrets
 .env
 node_modules/
+.vercel

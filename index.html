@@ -22,6 +22,7 @@
           <button class="nav-item active" data-view="overview" id="nav-overview"><span>▦</span>Overview</button>
           <button class="nav-item" data-view="detection" id="nav-detection"><span>◎</span>Threat Detection</button>
           <button class="nav-item" data-view="traffic" id="nav-traffic"><span>⌁</span>Network Traffic</button>
+          <button class="nav-item" data-view="devices" id="nav-devices"><span>⊞</span>Connected Devices <b id="deviceBadge">10</b></button>
           <button class="nav-item" data-view="threatmap" id="nav-threatmap"><span>◉</span>Threat Map</button>
           <button class="nav-item" data-view="alerts" id="nav-alerts"><span>◇</span>Alerts <b id="alertBadge">3</b></button>
           <button class="nav-item" data-view="fileupload" id="nav-fileupload"><span>⇧</span>File Upload</button>
@@ -79,6 +80,7 @@
             <article><div class="metric-icon orange">◉</div><div><p>Threats detected</p><strong id="threatCount">27</strong><small class="warning">↑ <span id="threatDelta">4</span> <span>since yesterday</span></small></div></article>
             <article><div class="metric-icon violet">⌁</div><div><p>Detection accuracy</p><strong id="accuracyVal">98.7%</strong><small class="positive">↗ 0.6% <span>model confidence</span></small></div></article>
             <article><div class="metric-icon green">◷</div><div><p>Avg. response time</p><strong id="responseTime">1.8 min</strong><small class="positive">↘ 24 sec <span>vs. last week</span></small></div></article>
+            <article style="cursor:pointer" data-go="devices"><div class="metric-icon cyan">⊞</div><div><p>Connected Devices</p><strong id="overviewDevCount">10 nodes</strong><small class="positive" id="overviewDevSub">● 9 online · 1 flagged</small></div></article>
           </section>
           <section class="two-column">
             <article class="panel activity-panel">
@@ -193,6 +195,63 @@
                 <span>Role / Category</span>
                 <span>IP / Subnet</span>
                 <span>MAC / NIC</span>
+                <span>Live Bandwidth</span>
+                <span>Packets</span>
+                <span>Status</span>
+                <span>Action</span>
+              </div>
+              <div class="device-table" id="trafficDeviceList"></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- ══ CONNECTED DEVICES ══ -->
+        <section class="view" id="devices">
+          <section class="console-top">
+            <div>
+              <p class="eyebrow">MODULE 03 · CLOUD &amp; NETWORK INFRASTRUCTURE</p>
+              <h2>Connected cloud devices &amp; endpoints</h2>
+              <p>Live inventory of all cloud instances, containers, databases, gateways, and endpoints — showing hostnames, IP addresses, MAC addresses, and connected VPC networks.</p>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <button class="scan-button" id="scanDevicesBtn"><span>⟳</span> Scan network (ARP)</button>
+            </div>
+          </section>
+
+          <!-- KPI Summary Cards -->
+          <section class="metrics" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+            <article><div class="metric-icon cyan">⊞</div><div><p>Discovered devices</p><strong id="totalDevCount">10</strong><small class="positive">All active nodes</small></div></article>
+            <article><div class="metric-icon green">●</div><div><p>Online &amp; healthy</p><strong id="onlineDevCount">9</strong><small class="positive">Passing health checks</small></div></article>
+            <article><div class="metric-icon orange">⚠</div><div><p>High traffic / flagged</p><strong id="flaggedDevCount">2</strong><small class="warning">Needs inspection</small></div></article>
+            <article><div class="metric-icon red">🔒</div><div><p>Quarantined / isolated</p><strong id="isolatedDevCount">0</strong><small class="positive" id="quarantineSub">No devices isolated</small></div></article>
+          </section>
+
+          <!-- Main Connected Devices Registry -->
+          <article class="panel">
+            <div class="panel-heading" style="flex-wrap: wrap; gap: 12px;">
+              <div>
+                <p class="eyebrow">NETWORK TOPOLOGY &amp; HARDWARE REGISTRY</p>
+                <h3>Active connected cloud endpoints</h3>
+              </div>
+              <div class="device-controls">
+                <input type="text" id="deviceSearch" placeholder="Search by name, IP, MAC, VPC..." class="device-search-input" />
+                <div class="filter-group device-filters">
+                  <button class="filter dev-filter active" data-devfilter="all">All (10)</button>
+                  <button class="filter dev-filter" data-devfilter="server">Servers</button>
+                  <button class="filter dev-filter" data-devfilter="database">Databases</button>
+                  <button class="filter dev-filter" data-devfilter="gateway">Gateways</button>
+                  <button class="filter dev-filter" data-devfilter="workstation">Endpoints</button>
+                  <button class="filter dev-filter" data-devfilter="isolated">Isolated</button>
+                </div>
+              </div>
+            </div>
+            <div class="device-table-wrap">
+              <div class="device-table-head">
+                <span>Device Name</span>
+                <span>Role / Category</span>
+                <span>IP Address &amp; Port</span>
+                <span>MAC / NIC</span>
+                <span>Connected Network / VPC</span>
                 <span>Live Bandwidth</span>
                 <span>Packets</span>
                 <span>Status</span>
